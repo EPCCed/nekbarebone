@@ -1,0 +1,124 @@
+BINNAME=nekbarebone
+CASENAME=
+CASEDIR=
+S=
+J:=$S/jl
+OPT_INCDIR:=./
+OBJDIR=obj
+IFEXAGSMPI=true
+EXAGSLIBNAME=exags_mpi
+EXAGSLIBPATH=$(OBJDIR)
+JLCOMMS = -DMPI
+#IFEXAGSMPI=false
+#EXAGSLIBNAME=exags
+#EXAGSLIBPATH=<path to external exags library>
+F77=
+CC=
+P=
+PPPO=
+PPS=
+G=
+OPT_FLAGS_STD=
+USR=
+USR_LFLAGS=
+
+################################################################################
+
+lFLAGS = $(USR_LFLAGS)
+
+PPS_F = $(patsubst %,$(PPPO)-D%,$(PPS))
+PPS_C = $(patsubst %,-D%,$(PPS))
+
+#NEW #########################################################################
+BONE = cg.o driver.o commi.o math.o mxm_wrapper.o prox_dssum.o\
+prox_setup.o semhat.o speclib.o
+################################################################################
+# MXM 
+MXM = mxm_std.o
+
+# JL Routines ###################################################################
+JO  = jl_
+JL := -DPREFIX=jl_
+
+JLCORE = $(JO)gs.o $(JO)sort.o $(JO)sarray_transfer.o $(JO)sarray_sort.o \
+$(JO)gs_local.o $(JO)crystal.o $(JO)comm.o $(JO)tensor.o $(JO)fail.o \
+$(JO)sleep.o
+
+#####################################################################################
+TMPBON = $(BONE) $(MXM)
+NOBJS_Fbon = $(patsubst %,$(OBJDIR)/%,$(TMPBON))
+
+ifeq ($(IFEXAGSMPI),true)
+TMP0c = $(JLCORE)
+NOBJS_C0 = $(patsubst %,$(OBJDIR)/%,$(TMP0c))
+else
+NOBJS_C0 =
+endif
+
+NOBJS0_bone = $(NOBJS_Fbon) $(NOBJS_C0)
+##############################################################################
+
+L0 = $(G) -O0
+L2 = $(G) $(OPT_FLAGS_STD)
+L3 = $(G) $(OPT_FLAGS_STD)
+L4 = $(L3)
+
+FL0   = $(L0) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL2i4 = $(L0)      $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL2   = $(L2) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL3   = $(L3) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL4   = $(L4) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+
+cFL0   = $(L0) $(PPS_C) 
+cFL2   = $(L2) $(PPS_C) 
+cFL3   = $(L3) $(PPS_C) 
+cFL4   = $(L4) $(PPS_C) 
+################################################################################
+all : nekbarebone
+
+objdir: 
+	@mkdir $(OBJDIR) 2>/dev/null; cat /dev/null 
+
+nekbarebone: 	objdir $(NOBJS_Fbon) $(NOBJS_C0)
+ifeq ($(IFEXAGSMPI),true)
+	ar cru $(OBJDIR)/lib$(EXAGSLIBNAME).a $(NOBJS_C0)
+endif
+	$(F77) -o ${BINNAME} $G $(NOBJS_Fbon) -L$(EXAGSLIBPATH) -l$(EXAGSLIBNAME)
+	@if test -f ${BINNAME}; then \
+	echo "#############################################################"; \
+	echo "#                  Compilation successful!                  #"; \
+	echo "#############################################################"; \
+        size ${BINNAME}; \
+        echo ""; \
+	else \
+	echo -e "\033[1;31;38m" "ERROR: Compilation failed!"; \
+	echo -e "\033[0m"; \
+	fi
+
+clean:
+	rm -rf *.i ./obj ${BINNAME}
+
+$(NOBJS_Fbon) : SIZE
+# CORE      ############################################################################
+$(OBJDIR)/cg.o          :$S/cg.f;                       $(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
+$(OBJDIR)/prox_setup.o  :$S/prox_setup.f;               $(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/driver.o      :$S/driver.f;                   $(F77) -c $(FL2) $< -o $@
+$(OBJDIR)/math.o	:$S/math.f;			$(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/semhat.o	:$S/semhat.f;			$(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/speclib.o	:$S/speclib.f;			$(F77) -c $(FL2) $< -o $@
+$(OBJDIR)/commi.o	:$S/commi.f;			$(F77) -c $(FL2) $< -o $@
+# MXM       ############################################################################
+$(OBJDIR)/mxm_wrapper.o	  :$S/mxm_wrapper.f;		$(F77) -c $(FL2) $< -o $@ 
+$(OBJDIR)/mxm_std.o	  :$S/mxm_std.f;		$(F77) -c $(FL4) $< -o $@
+# C Files ##################################################################################
+$(OBJDIR)/$(JO)fail.o            :$(J)/fail.c;            $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)tensor.o          :$(J)/tensor.c;          $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)sort.o            :$(J)/sort.c;            $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)sarray_sort.o     :$(J)/sarray_sort.c;     $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)comm.o            :$(J)/comm.c;            $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)crystal.o         :$(J)/crystal.c;         $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)sarray_transfer.o :$(J)/sarray_transfer.c; $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)sleep.o	         :$(J)/sleep.c;	          $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@
+$(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $(JLCOMMS) $< -o $@

@@ -1,0 +1,24 @@
+#!/bin/bash --login
+#PBS -N nkbex2
+#PBS -l select=1
+#PBS -l walltime=00:02:00
+#PBS -A <account>
+
+# Move to directory that script was submitted from
+export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
+cd $PBS_O_WORKDIR
+
+# This prevents any system libraries from using threading
+export OMP_NUM_THREADS=1
+
+jobnm=${PBS_JOBNAME}
+corecnt=4
+
+rm -f logfile
+
+mv ${jobnm}.log.${corecnt} ${jobnm}.log1.${corecnt}
+
+aprun -n ${corecnt} ./nekbarebone ${jobnm} > ${jobnm}.log.${corecnt}
+
+ln ${jobnm}.log.${corecnt} logfile
+

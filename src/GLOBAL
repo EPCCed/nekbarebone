@@ -1,0 +1,27 @@
+      common /dimn/ nelx,nely,nelz,nelt, 
+     &              nx1,ny1,nz1,
+     &              ndim,nfield
+      integer nelx,nely,nelz,nelt
+      integer nx1,ny1,nz1
+      integer ndim,nfield
+                  
+
+      common /nekcomms/ comms_h,comms_id,comms_np,
+     &                  comms_real,comms_int,comms_int8,
+     &                  gs_h
+      integer comms_h,comms_id,comms_np
+      integer comms_real,comms_int,comms_int8
+      integer gs_h
+
+
+      common /precsn/ wdsize,isize,lsize,csize
+      integer wdsize,isize,lsize,csize
+
+
+      common /cflops/ flop_a,flop_cg,mflops,
+     &                mfloplist(1024), avmflop
+      real flop_a,flop_cg,mflops,mfloplist,avmflop
+
+
+      common /timer/ tstart, tstop
+      real*8 tstart, tstop, ttotal

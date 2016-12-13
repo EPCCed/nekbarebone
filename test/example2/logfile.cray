@@ -1,0 +1,29 @@
+ Number of processors: 4
+ REAL    wdsize      : 8
+ INTEGER wdsize      : 4
+ ifbrick:  T
+ 
+ Processor Distribution:  npx,npy,npz= 2*2,  1
+ Element Distribution: nelx,nely,nelz= 2*10,  2
+ Local Element Distribution: mx,my,mz= 2*5,  2
+gs_setup: 3439 unique labels shared
+   pairwise times (avg, min, max): 5.4121e-06 5.31673e-06 5.60284e-06
+   crystal router                : 1.04189e-05 1.03951e-05 1.04904e-05
+   all reduce                    : 2.02179e-05 2.01941e-05 2.02894e-05
+   used all_to_all method: pairwise
+   setupds time 1.2438E-02 seconds   0 10           0
+cg:   0  2.4276E+02
+cg: 101  2.3657E-08  4.0209E-01  6.5356E-01  2.1801E-15
+cg:   0  2.6276E+02
+cg: 101  2.8752E-08  4.0004E-01  6.5495E-01  3.2710E-15
+ 
+nelt =      50, np =         4, nx1 =      10, elements =       200
+Tot MFlops =   2.2650E+04, MFlops      =   5.6624E+03
+Setup Flop =   6.9500E+08, Solver Flop =   7.5750E+07
+Solve Time =   0.1361E+00
+Avg MFlops =   2.2650E+04
+  
+  
+total elapsed time:   3.24784E-01 sec
+
+Application 726267 resources: utime ~1s, stime ~1s, Rss ~14516, inblocks ~20240, outblocks ~72798
