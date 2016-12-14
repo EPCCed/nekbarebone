@@ -144,6 +144,8 @@ void comm_allreduce(const struct comm *c, gs_dom dom, gs_op op,
 void comm_scan(void *scan, const struct comm *com, gs_dom dom, gs_op op,
                const void *v, uint vn, void *buffer);
 
+double comm_dot(const struct comm *comm, double *v, double *w, uint n);
+
 #define DEFINE_REDUCE(T) \
 T PREFIXED_NAME(comm_reduce__##T)( \
     const struct comm *comm, gs_op op, const T *in, uint n); \
