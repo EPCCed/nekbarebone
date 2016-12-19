@@ -15,18 +15,18 @@ c-----------------------------------------------------------------------
       ! check upper tag size limit
       call comm_tag_ub(comms_h,nval)
       if (nval.ne.0.AND.nval.lt.(10000+max(lp,lelg))) then
-         if(comms_id.eq.0) write(6,*) 'ABORT: TAG_UB too small!'
-         call exitt(1)
+        if(comms_id.eq.0) write(6,*) 'ABORT: TAG_UB too small!'
+        call exitt(1)
       endif
             
       IF (comms_np.GT.lp) THEN
-         WRITE(6,*) 
+        WRITE(6,*) 
      &   'ERROR: Code compiled for a max of',lp,' processors.'
-         WRITE(6,*) 
+        WRITE(6,*) 
      &   'Recompile with LP =',comms_np,' or run with fewer processors.'
-         WRITE(6,*) 
+        WRITE(6,*) 
      &   'Aborting in routine init_nek_comms.'
-         call exitt(1)
+        call exitt(1)
       endif
 
       ! set word size for REAL
@@ -34,11 +34,11 @@ c-----------------------------------------------------------------------
       eps=1.0e-12
       oneeps = 1.0+eps
       if (oneeps.ne.1.0) then
-         wdsize=8
+        wdsize=8
       else
-         if (comms_id.eq.0) 
-     &     write(6,*) 'ABORT: single precision mode not supported!'
-         call exitt(1)
+        if (comms_id.eq.0) 
+     &    write(6,*) 'ABORT: single precision mode not supported!'
+        call exitt(1)
       endif
 
       if (wdsize.eq.8) then
@@ -60,9 +60,9 @@ c-----------------------------------------------------------------------
       csize = 1
 
       if (comms_id.eq.0) then 
-         write(6,*) 'Number of processors:',comms_np
-         WRITE(6,*) 'REAL    wdsize      :',wdsize
-         WRITE(6,*) 'INTEGER wdsize      :',isize
+        write(6,*) 'Number of processors:',comms_np
+        write(6,*) 'REAL    wdsize      :',wdsize
+        write(6,*) 'INTEGER wdsize      :',isize
       endif
 
       return
@@ -78,16 +78,16 @@ c-----------------------------------------------------------------------
       character*3 op
 
       if (op.eq.'+  ') then
-         call comm_allreduce_add(comms_h,comms_real,x,n,w)
+        call comm_allreduce_add(comms_h,comms_real,x,n,w)
       elseif (op.EQ.'M  ') then
-         call comm_allreduce_max(comms_h,comms_real,x,n,w)
+        call comm_allreduce_max(comms_h,comms_real,x,n,w)
       elseif (op.EQ.'m  ') then
-         call comm_allreduce_min(comms_h,comms_real,x,n,w)
+        call comm_allreduce_min(comms_h,comms_real,x,n,w)
       elseif (op.EQ.'*  ') then
-         call comm_allreduce_mul(comms_h,comms_real,x,n,w)
+        call comm_allreduce_mul(comms_h,comms_real,x,n,w)
       else
-         write(6,*) comms_id,' OP ',op,' not supported.  ABORT in GOP.'
-         call exitt(1)
+        write(6,*) comms_id,' OP ',op,' not supported.  ABORT in GOP.'
+        call exitt(1)
       endif
 
       call copy(x,w,n)

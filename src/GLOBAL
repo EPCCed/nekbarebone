@@ -9,7 +9,8 @@
       common /nekcomms/ comms_h,comms_id,comms_np,
      &                  comms_real,comms_int,comms_int8,
      &                  gs_h
-      integer comms_h,comms_id,comms_np
+      integer*8 comms_h
+      integer comms_id,comms_np
       integer comms_real,comms_int,comms_int8
       integer gs_h
 
