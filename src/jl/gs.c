@@ -1020,7 +1020,7 @@ static void auto_setup(struct gs_remote *r, struct gs_topology *top,
   Main Execution
 ------------------------------------------------------------------------------*/
 struct gs_data {
-  struct comm *comm;
+  comm_ptr comm;
   const uint *map_local[2]; /* 0=unflagged, 1=all */
   const uint *flagged_primaries;
   struct gs_remote r;

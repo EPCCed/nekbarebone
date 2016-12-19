@@ -10,7 +10,7 @@
 #define crystal_router PREFIXED_NAME(crystal_router)
 
 struct crystal {
-  struct comm *comm;
+  comm_ptr comm;
   buffer data, work;
 };
 
