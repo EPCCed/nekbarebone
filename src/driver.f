@@ -11,10 +11,9 @@ c-----------------------------------------------------------------------
       integer npx,npy,npz      ! processor decomp
       integer mx,my,mz         ! element decomp
       integer icount,niter,n
-      
 
       call init_comms
-            
+
       call read_param(ifbrick,
      &                iel0,ielN,ielD,
      &                nx0,nxN,nxD,
@@ -25,56 +24,57 @@ c-----------------------------------------------------------------------
             
       call comm_time(tstart)
       do nx1=nx0,nxN,nxD
-         call init_dim
-         do nelt=iel0,ielN,ielD
-           call init_mesh(ifbrick,npx,npy,npz,mx,my,mz)
-           call proxy_setupds(nx1) 
+        call init_dim
+        do nelt=iel0,ielN,ielD
+          call init_mesh(ifbrick,npx,npy,npz,mx,my,mz)
+          call proxy_setupds(nx1) 
            
-           call set_multiplicity(c) ! inverse of counting matrix
-           call proxy_setup(ah,bh,ch,dh,zh,wh,g)
+          call set_multiplicity(c) ! inverse of counting matrix
+          call proxy_setup(ah,bh,ch,dh,zh,wh,g)
                       
-           niter = 100
-           n = nx1*ny1*nz1*nelt
+          niter = 100
+          n = nx1*ny1*nz1*nelt
 
-           call set_f(f,c,n)
+          call set_f(f,c,n)
 
-           call cg(x,f,g,c,r,w,p,z,n,niter)
+          call cg(x,f,g,c,r,w,p,z,n,niter)
 
-           call comm_barrier(comms_h)
+          call comm_barrier(comms_h)
 
-           call set_timer_flop_cnt(0)
-           call cg(x,f,g,c,r,w,p,z,n,niter)
-           call set_timer_flop_cnt(1)
+          call set_timer_flop_cnt(0)
+          call cg(x,f,g,c,r,w,p,z,n,niter)
+          call set_timer_flop_cnt(1)
 
-           call gs_free(gs_h)
+          call gs_free(gs_h)
            
-           icount = icount + 1
-           mfloplist(icount) = mflops*comms_np
-         enddo
+          icount = icount + 1
+          mfloplist(icount) = mflops*comms_np
+        enddo
       enddo
       call comm_barrier(comms_h) 
       call comm_time(tstop) 
 
       avmflop = 0.0
       do i = 1,icount
-         avmflop = avmflop+mfloplist(i)
+        avmflop = avmflop+mfloplist(i)
       enddo
       if(icount.ne.0) then
-         avmflop=avmflop/icount
+        avmflop=avmflop/icount
       endif
       if(comms_id.eq.0) then
-         write(6,1) avmflop
+        write(6,1) avmflop
       endif
- 1    format('Avg MFlops = ',1pe12.4)
+    1    format('Avg MFlops = ',1pe12.4)
 
       if (comms_id.eq.0) then
-         ttotal = tstop-tstart
-         write(6,*) ' '
-         write(6,*) ' '
-         write(6,'(1(A,1p1e13.5,A,/))') 
+        ttotal = tstop-tstart
+        write(6,*) ' '
+        write(6,*) ' '
+        write(6,'(1(A,1p1e13.5,A,/))') 
      &       'total elapsed time: ',ttotal, ' sec'
       endif 
 
+      call comm_finalize
       call exit(0)
       end
 c--------------------------------------------------------------
@@ -82,9 +82,9 @@ c--------------------------------------------------------------
       real f(n),c(n)
 
       do i=1,n
-         arg  = 1.e9*(i*i)
-         arg  = 1.e9*cos(arg)
-         f(i) = sin(arg)
+        arg  = 1.e9*(i*i)
+        arg  = 1.e9*cos(arg)
+        f(i) = sin(arg)
       enddo
 
       call dssum(f)
@@ -117,70 +117,70 @@ c     Trigger reset of mask
       cmask(-1) = 1.0
 
       if(.not.ifbrick) then   ! A 1-D array of elements of length P*lelt
-         nelx = nelt*comms_np
-         nely = 1
-         nelz = 1
+        nelx = nelt*comms_np
+        nely = 1
+        nelz = 1
 
-         npx=comms_np
-         npy=1
-         npz=1
+        npx=comms_np
+        npy=1
+        npz=1
 
-         mx=nelt
-         my=1
-         mz=1
+        mx=nelt
+        my=1
+        mz=1
 
-         if(comms_id.eq.0) then 
-           write(6,*)
-           write(6,*) 'Processor Distribution: npx,npy,npz=',npx,
-     &                npy,npz
-           write(6,*) 'Element Distribution: nelx,nely,nelz=',nelx,
-     &                nely,nelz
-           write(6,*) 'Local Element Distribution: mx,my,mz=',mx,
-     &                my,mz
-         endif
+        if(comms_id.eq.0) then 
+          write(6,*)
+          write(6,*) 'Processor Distribution: npx,npy,npz=',npx,
+     &               npy,npz
+          write(6,*) 'Element Distribution: nelx,nely,nelz=',nelx,
+     &               nely,nelz
+          write(6,*) 'Local Element Distribution: mx,my,mz=',mx,
+     &               my,mz
+        endif
    
-         do e=1,nelt
-            eg = e + comms_id*nelt
-            lglel(e) = eg
-         enddo
+        do e=1,nelt
+          eg = e + comms_id*nelt
+          lglel(e) = eg
+        enddo
       else              ! A 3-D block of elements 
-         !xyz distribution of total proc if user-provided isn't valid
-         if(npx*npy*npz.ne.comms_np) then
-            call cubic(npx,npy,npz,comms_np) 
-         endif
+        !xyz distribution of total proc if user-provided isn't valid
+        if(npx*npy*npz.ne.comms_np) then
+          call cubic(npx,npy,npz,comms_np) 
+        endif
 
-         !xyz distribution of total NELT if user-provided isn't valid
-         if(mx*my*mz.ne.nelt)  then
-            call cubic(mx,my,mz,nelt) 
-         endif
+        !xyz distribution of total NELT if user-provided isn't valid
+        if(mx*my*mz.ne.nelt)  then
+          call cubic(mx,my,mz,nelt) 
+        endif
       
-         nelx = mx*npx
-         nely = my*npy 
-         nelz = mz*npz
+        nelx = mx*npx
+        nely = my*npy 
+        nelz = mz*npz
 
-         if(comms_id.eq.0) then 
-           write(6,*)
-           write(6,*) 'Processor Distribution:  npx,npy,npz=',npx,
-     &                npy,npz
-           write(6,*) 'Element Distribution: nelx,nely,nelz=',nelx,
-     &                nely,nelz
-           write(6,*) 'Local Element Distribution: mx,my,mz=',mx,
-     &                my,mz
-         endif
+        if(comms_id.eq.0) then 
+          write(6,*)
+          write(6,*) 'Processor Distribution:  npx,npy,npz=',npx,
+     &               npy,npz
+          write(6,*) 'Element Distribution: nelx,nely,nelz=',nelx,
+     &               nely,nelz
+          write(6,*) 'Local Element Distribution: mx,my,mz=',mx,
+     &               my,mz
+        endif
 
-         e = 1
-         offs = (mod(comms_id,npx)*mx) +
-     &          npx*(my*mx)*(mod(comms_id/npx,npy)) + 
-     &          (npx*npy)*(mx*my*mz)*(comms_id/(npx*npy))
-         do k = 0,mz-1
-         do j = 0,my-1
-         do i = 0,mx-1
-            eg = offs+i+(j*nelx)+(k*nelx*nely)+1
-            lglel(e) = eg
-            e        = e+1
-         enddo
-         enddo
-         enddo
+        e = 1
+        offs = (mod(comms_id,npx)*mx) +
+     &         npx*(my*mx)*(mod(comms_id/npx,npy)) + 
+     &         (npx*npy)*(mx*my*mz)*(comms_id/(npx*npy))
+        do k = 0,mz-1
+        do j = 0,my-1
+        do i = 0,mx-1
+          eg = offs+i+(j*nelx)+(k*nelx*nely)+1
+          lglel(e) = eg
+          e        = e+1
+        enddo
+        enddo
+        enddo
       endif
 
       return
@@ -250,7 +250,7 @@ c-----------------------------------------------------------------------
       call gs_op(gs_h,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
 
       do i=1,n
-         c(i) = 1./c(i)
+        c(i) = 1./c(i)
       enddo
 
       return
@@ -311,15 +311,17 @@ c----------------------------------------------------------------------
       mz =0
 
       if(comms_id.eq.0) then
-         open(unit=9,file='data.rea',status='old') 
-         read(9,*,err=100) ifbrick
-         read(9,*,err=100) iel0,ielN,ielD
-         read(9,*,err=100) nx0,nxN,nxD
-         read(9,*,err=100,iostat=ii) npx,npy,npz !optional
-         read(9,*,err=100,iostat=ii) mx,my,mz !optional
-         close(9)
-       endif
-       
+        open(unit=9,file='data.rea',status='old') 
+        read(9,*,err=100) ifbrick
+        read(9,*,err=100) iel0,ielN,ielD
+        read(9,*,err=100) nx0,nxN,nxD
+        read(9,*,err=100,iostat=ii) npx,npy,npz !optional
+        read(9,*,err=100,iostat=ii) mx,my,mz !optional
+        close(9)
+      endif
+
+      call comm_barrier(comms_h)
+      
       call comm_bcast(comms_h,ifbrick,4,0)
 
       call comm_bcast(comms_h,iel0,4,0)! ELEMENT range
