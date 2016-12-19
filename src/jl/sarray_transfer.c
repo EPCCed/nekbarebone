@@ -150,9 +150,9 @@ uint sarray_transfer_many(
   
   perm = sortp(&cr->work,0, proc,A[0]->n,proc_stride);
 
-  if(!ext) pack_int(&cr->data, row_size, cr->comm.id, A[0]->ptr,A[0]->n,size[0],
+  if(!ext) pack_int(&cr->data, row_size, cr->comm->id, A[0]->ptr,A[0]->n,size[0],
                     p_off, perm);
-  else     pack_ext(&cr->data, row_size, cr->comm.id, A[0]->ptr,A[0]->n,size[0],
+  else     pack_ext(&cr->data, row_size, cr->comm->id, A[0]->ptr,A[0]->n,size[0],
                     proc,proc_stride, perm);
   for(off=off1,i=1;i<An;++i) if(size[i])
     pack_more(&cr->data,off,row_size, A[i]->ptr,size[i], perm),off+=size[i];

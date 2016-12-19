@@ -133,9 +133,9 @@ void gs_vec(void *u, unsigned vn, gs_dom dom, gs_op op,
             unsigned transpose, struct gs_data *gsh, buffer *buf);
 void gs_many(void *const*u, unsigned vn, gs_dom dom, gs_op op,
              unsigned transpose, struct gs_data *gsh, buffer *buf);
-struct gs_data *gs_setup(const slong *id, uint n, const struct comm *comm,
+struct gs_data *gs_setup(const slong *id, uint n, const comm_ptr comm,
                          int unique, gs_method method, int verbose);
 void gs_free(struct gs_data *gsh);
-void gs_unique(slong *id, uint n, const struct comm *comm);
+void gs_unique(slong *id, uint n, const comm_ptr comm);
 
 #endif

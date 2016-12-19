@@ -28,103 +28,154 @@ void comm_finalize()
 }
 
 
-void comm_dup(const comm_hdl ch, comm_hdl *chp)
+void comm_world(comm_ptr *cpp)
 {
+  if (NULL == cpp) return;
+
+  comm_ptr cp = (comm_ptr) calloc(sizeof (struct comm), 0);
+  
+  if (NULL != cp) {
 #ifdef MPI
-  comm_hdl chd;
-  MPI_Comm_dup(ch, &chd);
-  *chp = chd;
+    cp->h = MPI_COMM_WORLD;
+    MPI_Comm_size(cp->h,&(cp->np));
+    MPI_Comm_rank(cp->h,&(cp->id));
+#else
+    cp->h = NULL;
+    cp->np = 0;
+    cp->id = -1;
 #endif
+
+    *cpp = cp;
+  }
 }
 
-void comm_world(comm_hdl *chp)
+void comm_dup(comm_ptr *cpp, const comm_ptr cp)
 {
+  if (NULL == cpp || NULL == cp) return;
+
+  comm_ptr cpd = (comm_ptr) calloc(sizeof (struct comm), 0);
+
+  if (NULL != cpd) {
 #ifdef MPI
-  *chp = MPI_COMM_WORLD;
-#endif
+    MPI_Comm_dup(cp->h, &(cpd->h));
+#else
+    cpd->h = cp->h;
+#endif 
+    cpd->np = cp->np;
+    cpd->id = cp->id;
+
+    *cpp = cpd;
+  }
 }
 
-void comm_free(comm_hdl ch)
+void comm_free(comm_ptr *cpp)
 {
+  if (NULL == cpp) return;
+
+  comm_ptr cp = *cpp;
+
+  if (NULL != cp) {
 #ifdef MPI
-  MPI_Comm_free(&ch);
+    MPI_Comm_free(&(cp->h)); 
 #endif
+    free(cp);
+    *cpp = NULL;
+  }
 }
 
 
-void comm_id(const comm_hdl ch, int *id)
+void comm_np(const comm_ptr cp, int *np)
 {
-#ifdef MPI
-  MPI_Comm_rank(ch,id);
-#endif
+  if (NULL != cp && NULL != np) {
+    *np = cp->np;
+  }
 }
 
-void comm_np(const comm_hdl ch, int *np)
+void comm_id(const comm_ptr cp, int *id)
 {
-#ifdef MPI
-  MPI_Comm_size(ch,np);
-#endif
+  if (NULL != cp && NULL != id) {
+    *id = cp->id;
+  }
 }
 
 
 void comm_type_int(comm_type *ct)
 {
+  if (NULL == ct) return;
 #ifdef MPI
   *ct = MPI_INTEGER;
+#else
+  *ct = 0;
 #endif
 }
 
 void comm_type_int8(comm_type *ct)
 {
+  if (NULL == ct) return;
 #ifdef MPI
   *ct = MPI_INTEGER8;
+#else
+  *ct = 0;
 #endif
 }
 
 void comm_type_real(comm_type *ct)
 {
+  if (NULL == ct) return;
 #ifdef MPI
   *ct = MPI_REAL;
+#else
+  *ct = 0;
 #endif
 }
 
 void comm_type_dp(comm_type *ct)
 {
+  if (NULL == ct) return;
 #ifdef MPI
   *ct = MPI_DOUBLE_PRECISION;
+#else
+  *ct = 0;
 #endif
 }
 
-void comm_tag_ub(const comm_hdl ch, int *ub)
+void comm_tag_ub(const comm_ptr cp, int *ub)
 {
+  if (NULL == cp || NULL == ub) return;
 #ifdef MPI
-  int val=0;
-  int flag=0;
-  MPI_Attr_get(ch,MPI_TAG_UB,&val,&flag);
+  int val = 0, flag = 0;
+  MPI_Attr_get(cp->h,MPI_TAG_UB,&val,&flag);
   *ub = val;
+#else
+  *ub = 0;
 #endif
 }
 
 void comm_time(double *tm)
 {
+  if (NULL == tm) return;
 #ifdef MPI
   *tm = MPI_Wtime();
 #else
-  *tm = 0.0;
+  time_t timer;
+  time(&timer);
+  *tm = (double) timer;
 #endif
 }
 
-void comm_barrier(const comm_hdl ch)
+void comm_barrier(const comm_ptr cp)
 {
+  if (NULL == cp) return;
 #ifdef MPI
-  MPI_Barrier(ch);
+  MPI_Barrier(cp->h);
 #endif
 }
 
-void comm_bcast(const comm_hdl ch, void *p, size_t n, uint root)
+void comm_bcast(const comm_ptr cp, void *p, size_t n, uint root)
 {
+  if (NULL == cp) return;
 #ifdef MPI
-  MPI_Bcast(p,n,MPI_BYTE,root,ch);
+  MPI_Bcast(p,n,MPI_BYTE,root,cp->h);
 #endif
 }
 
@@ -134,12 +185,14 @@ uint comm_gbl_id=0, comm_gbl_np=1;
 GS_DEFINE_IDENTITIES()
 GS_DEFINE_DOM_SIZES()
 
-static void scan_imp(void *scan, const struct comm *com, gs_dom dom, gs_op op,
+static void scan_imp(void *scan, const comm_ptr cp, gs_dom dom, gs_op op,
                      const void *v, uint vn, void *buffer)
 {
+  if (NULL == cp) return;
+  
   comm_req req[2];
   size_t vsize = vn*gs_dom_size[dom];
-  const uint id=com->id, np=com->np;
+  const uint np=cp->np, id=cp->id;
   uint n = np, c=1, odd=0, base=0;
   void *buf[2];
   void *red = (char*)scan+vsize;
@@ -156,22 +209,22 @@ static void scan_imp(void *scan, const struct comm *com, gs_dom dom, gs_op op,
     c>>=1, n<<=1, n+=(odd&1);
     odd>>=1;
     if(base==id) {
-      comm_irecv(&req[0],com, buf[0],vsize, id+n/2,id+n/2);
-      comm_isend(&req[1],com, red   ,vsize, id+n/2,id);
+      comm_irecv(&req[0],cp, buf[0],vsize, id+n/2,id+n/2);
+      comm_isend(&req[1],cp, red   ,vsize, id+n/2,id);
       comm_wait(req,2);
       gs_gather_array(red,buf[0],vn,dom,op);
     } else {
-      comm_irecv(&req[0],com, scan,vsize, base,base);
-      comm_isend(&req[1],com, red ,vsize, base,id);
+      comm_irecv(&req[0],cp, scan,vsize, base,base);
+      comm_isend(&req[1],cp, red ,vsize, base,id);
       comm_wait(req,2);
       break;
     }
   }
   while(n>1) {
     if(base==id) {
-      comm_send(com, scan  ,2*vsize, id+n/2,id);
+      comm_send(cp, scan  ,2*vsize, id+n/2,id);
     } else {
-      comm_recv(com, buffer,2*vsize, base,base);
+      comm_recv(cp, buffer,2*vsize, base,base);
       gs_gather_array(scan,buf[0],vn,dom,op);
       memcpy(red,buf[1],vsize);
     }
@@ -182,11 +235,13 @@ static void scan_imp(void *scan, const struct comm *com, gs_dom dom, gs_op op,
 }
 
 
-static void allreduce_imp(const struct comm *com, gs_dom dom, gs_op op,
+static void allreduce_imp(const comm_ptr cp, gs_dom dom, gs_op op,
                           void *v, uint vn, void *buf)
 {
+  if (NULL == cp) return;
+  
   size_t total_size = vn*gs_dom_size[dom];
-  const uint id=com->id, np=com->np;
+  const uint np=cp->np, id=cp->id;
   uint n = np, c=1, odd=0, base=0;
   while(n>1) {
     odd=(odd<<1)|(n&1);
@@ -198,31 +253,31 @@ static void allreduce_imp(const struct comm *com, gs_dom dom, gs_op op,
     c>>=1, n<<=1, n+=(odd&1);
     odd>>=1;
     if(base==id) {
-      comm_recv(com, buf,total_size, id+n/2,id+n/2);
+      comm_recv(cp, buf,total_size, id+n/2,id+n/2);
       gs_gather_array(v,buf,vn, dom,op);
     } else {
-      comm_send(com, v,total_size, base,id);
+      comm_send(cp, v,total_size, base,id);
       break;
     }
   }
   while(n>1) {
     if(base==id)
-      comm_send(com, v,total_size, id+n/2,id);
+      comm_send(cp, v,total_size, id+n/2,id);
     else
-      comm_recv(com, v,total_size, base,base);
+      comm_recv(cp, v,total_size, base,base);
     odd=(odd<<1)|(n&1);
     c<<=1, n>>=1;
     if(id>=base+n) c|=1, base+=n, n+=(odd&1);
   }
 }
 
-void comm_scan(void *scan, const struct comm *com, gs_dom dom, gs_op op,
+void comm_scan(void *scan, const comm_ptr cp, gs_dom dom, gs_op op,
                const void *v, uint vn, void *buffer)
 {
-  scan_imp(scan, com,dom,op, v,vn, buffer);
+  scan_imp(scan, cp,dom,op, v,vn, buffer);
 }
 
-void comm_allreduce_cdom(const comm_hdl ch, comm_type cdom, gs_op op,
+void comm_allreduce_cdom(const comm_ptr cp, comm_type cdom, gs_op op,
                          void *v, uint vn, void *buf)
 {
   gs_dom dom;
@@ -236,14 +291,7 @@ void comm_allreduce_cdom(const comm_hdl ch, comm_type cdom, gs_op op,
   }
 
   if (dom_ok == 1) {
-    struct comm c;
-    int id, np;
-    c.h = ch;
-    comm_id(ch,&id);
-    comm_np(ch,&np);
-    c.id = id;
-    c.np = np;
-    comm_allreduce(&c,dom,op,v,vn,buf);
+    comm_allreduce(cp,dom,op,v,vn,buf);
   }
   else {
     fail(1,__FILE__,__LINE__,
@@ -252,10 +300,11 @@ void comm_allreduce_cdom(const comm_hdl ch, comm_type cdom, gs_op op,
 }
 
 
-void comm_allreduce(const struct comm *com, gs_dom dom, gs_op op,
+void comm_allreduce(const comm_ptr cp, gs_dom dom, gs_op op,
                     void *v, uint vn, void *buf)
 {
-  if(vn==0) return;
+  if (NULL == cp || 0 == vn) return;
+  
 #ifdef MPI
   {
     MPI_Datatype mpitype;
@@ -277,25 +326,25 @@ void comm_allreduce(const struct comm *com, gs_dom dom, gs_op op,
                  case gs_max: mpiop=MPI_MAX;  break;
                  default:        goto comm_allreduce_byhand;
     }
-    MPI_Allreduce(v,buf,vn,mpitype,mpiop,com->h);
+    MPI_Allreduce(v,buf,vn,mpitype,mpiop,cp->h);
     memcpy(v,buf,vn*gs_dom_size[dom]);
     return;
   }
 #endif
 #ifdef MPI
 comm_allreduce_byhand:
-  allreduce_imp(com,dom,op, v,vn, buf);
+  allreduce_imp(cp,dom,op, v,vn, buf);
 #endif
 }
 
-double comm_dot(const struct comm *comm, double *v, double *w, uint n)
+double comm_dot(const comm_ptr cp, double *v, double *w, uint n)
 {
   double s=tensor_dot(v,w,n),b;
-  comm_allreduce(comm,gs_double,gs_add, &s,1, &b);
+  comm_allreduce(cp,gs_double,gs_add, &s,1, &b);
   return s;
 }
 
-/* T comm_reduce__T(const struct comm *comm, gs_op op, const T *in, uint n) */
+/* T comm_reduce__T(const comm_ptr cp, gs_op op, const T *in, uint n) */
 
 #define SWITCH_OP_CASE(T,OP) case gs_##OP: WITH_OP(T,OP); break;
 #define SWITCH_OP(T,op) do switch(op) { \
@@ -306,11 +355,11 @@ double comm_dot(const struct comm *comm, double *v, double *w, uint n)
 
 #define DEFINE_REDUCE(T) \
 T PREFIXED_NAME(comm_reduce__##T)( \
-    const struct comm *comm, gs_op op, const T *in, uint n) \
+    const comm_ptr cp, gs_op op, const T *in, uint n) \
 {                                                           \
   T accum = gs_identity_##T[op], buf;                       \
   if(n!=0) SWITCH_OP(T,op);                                 \
-  comm_allreduce(comm,gs_##T,op, &accum,1, &buf);           \
+  comm_allreduce(cp,gs_##T,op, &accum,1, &buf);           \
   return accum;                                             \
 }
 
@@ -331,8 +380,8 @@ GS_FOR_EACH_DOMAIN(DEFINE_REDUCE)
 #undef comm_finalize
 #undef comm_world
 #undef comm_free
-#undef comm_id
 #undef comm_np
+#undef comm_id
 #undef comm_type_int
 #undef comm_type_int8
 #undef comm_type_real
@@ -350,8 +399,8 @@ GS_FOR_EACH_DOMAIN(DEFINE_REDUCE)
 #define ccomm_finalize  PREFIXED_NAME(comm_finalize )
 #define ccomm_world     PREFIXED_NAME(comm_world)
 #define ccomm_free      PREFIXED_NAME(comm_free     )
-#define ccomm_id        PREFIXED_NAME(comm_id       )
 #define ccomm_np        PREFIXED_NAME(comm_np       )
+#define ccomm_id        PREFIXED_NAME(comm_id       )
 #define ccomm_type_int  PREFIXED_NAME(comm_type_int )
 #define ccomm_type_int8 PREFIXED_NAME(comm_type_int8)
 #define ccomm_type_real PREFIXED_NAME(comm_type_real)
@@ -369,8 +418,8 @@ GS_FOR_EACH_DOMAIN(DEFINE_REDUCE)
 #define fcomm_finalize  FORTRAN_NAME(comm_finalize , COMM_FINALIZE )
 #define fcomm_world     FORTRAN_NAME(comm_world    , COMM_WORLD    )
 #define fcomm_free      FORTRAN_NAME(comm_free     , COMM_FREE     )
-#define fcomm_id        FORTRAN_NAME(comm_id       , COMM_ID       )
 #define fcomm_np        FORTRAN_NAME(comm_np       , COMM_NP       )
+#define fcomm_id        FORTRAN_NAME(comm_id       , COMM_ID       )
 #define fcomm_type_int  FORTRAN_NAME(comm_type_int , COMM_TYPE_INT )
 #define fcomm_type_int8 FORTRAN_NAME(comm_type_int8, COMM_TYPE_INT8)
 #define fcomm_type_real FORTRAN_NAME(comm_type_real, COMM_TYPE_REAL)
@@ -396,25 +445,25 @@ void fcomm_finalize(void)
 }
 
 
-void fcomm_world(comm_hdl *chp)
+void fcomm_world(comm_ptr *cpp)
 {
-  ccomm_world(chp);
+  ccomm_world(cpp);
 }
 
-void fcomm_free(comm_hdl *chp)
+void fcomm_free(comm_ptr *cpp)
 {
-  ccomm_free(*chp);
+  ccomm_free(cpp);
 }
 
 
-void fcomm_id(const comm_hdl *chp, int *id)
+void fcomm_np(const comm_ptr *cpp, int *np)
 {
-  ccomm_id(*chp, id);
+  ccomm_np(*cpp, np);
 }
 
-void fcomm_np(const comm_hdl *chp, int *np)
+void fcomm_id(const comm_ptr *cpp, int *id)
 {
-  ccomm_np(*chp, np);
+  ccomm_id(*cpp, id);
 }
 
 
@@ -438,9 +487,9 @@ void fcomm_type_dp(comm_type *ct)
   ccomm_type_dp(ct);
 }
 
-void fcomm_tag_ub(const comm_hdl *chp, int *ub)
+void fcomm_tag_ub(const comm_ptr *cpp, int *ub)
 {
-  ccomm_tag_ub(*chp, ub);
+  ccomm_tag_ub(*cpp, ub);
 }
 
 void fcomm_time(double *tm)
@@ -449,39 +498,39 @@ void fcomm_time(double *tm)
 }
 
 
-void fcomm_barrier(const comm_hdl *chp)
+void fcomm_barrier(const comm_ptr *cpp)
 {
-  ccomm_barrier(*chp);
+  ccomm_barrier(*cpp);
 }
 
-void fcomm_bcast(const comm_hdl *chp, void *p, size_t *n, uint *root)
+void fcomm_bcast(const comm_ptr *cpp, void *p, size_t *n, uint *root)
 {
-  ccomm_bcast(*chp,p,*n,*root);
+  ccomm_bcast(*cpp,p,*n,*root);
 }
 
 
-void fcomm_allreduce_add(const comm_hdl *chp, comm_type *ct,
+void fcomm_allreduce_add(const comm_ptr *cpp, comm_type *ct,
                          void *v, uint *vn, void *buf)
 {
-  comm_allreduce_cdom(*chp,*ct,gs_add,v,*vn,buf);
+  comm_allreduce_cdom(*cpp,*ct,gs_add,v,*vn,buf);
 }
 
-void fcomm_allreduce_min(const comm_hdl *chp, comm_type *ct,
+void fcomm_allreduce_min(const comm_ptr *cpp, comm_type *ct,
                          void *v, uint *vn, void *buf)
 {
-  comm_allreduce_cdom(*chp,*ct,gs_min,v,*vn,buf);
+  comm_allreduce_cdom(*cpp,*ct,gs_min,v,*vn,buf);
 }
 
-void fcomm_allreduce_max(const comm_hdl *chp, comm_type *ct,
+void fcomm_allreduce_max(const comm_ptr *cpp, comm_type *ct,
                          void *v, uint *vn, void *buf)
 {
-  comm_allreduce_cdom(*chp,*ct,gs_max,v,*vn,buf);
+  comm_allreduce_cdom(*cpp,*ct,gs_max,v,*vn,buf);
 }
 
-void fcomm_allreduce_mul(const comm_hdl *chp, comm_type *ct,
+void fcomm_allreduce_mul(const comm_ptr *cpp, comm_type *ct,
                          void *v, uint *vn, void *buf)
 {
-  comm_allreduce_cdom(*chp,*ct,gs_mul,v,*vn,buf);
+  comm_allreduce_cdom(*cpp,*ct,gs_mul,v,*vn,buf);
 }
 
 

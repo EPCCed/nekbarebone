@@ -49,24 +49,16 @@
 #include "sarray_transfer.h"
 
 
-void crystal_init(struct crystal *cr, const struct comm *comm)
+void crystal_init(struct crystal *cr, const comm_ptr comm)
 {
-  comm_hdl h;
-  int id, np;
-  comm_dup(comm->h,&h);
-  comm_id(h,&id);
-  comm_np(h,&np);
-  cr->comm.h = h;
-  cr->comm.id = id;
-  cr->comm.np = np;
-  
+  comm_dup(&(cr->comm),comm);
   buffer_init(&cr->data,1000);
   buffer_init(&cr->work,1000);
 }
 
 void crystal_free(struct crystal *cr)
 {
-  comm_free(cr->comm.h);
+  comm_free(&(cr->comm));
   buffer_free(&cr->data);
   buffer_free(&cr->work);
 }
@@ -107,10 +99,10 @@ static void crystal_exchange(struct crystal *p, uint send_n, uint targ,
   uint count[2] = {0,0}, sum, *recv[2];
 
   if(recvn)   
-    comm_irecv(&req[1],&p->comm, &count[0],sizeof(uint), targ        ,tag);
+    comm_irecv(&req[1],p->comm, &count[0],sizeof(uint), targ        ,tag);
   if(recvn==2)
-    comm_irecv(&req[2],&p->comm, &count[1],sizeof(uint), p->comm.id-1,tag);
-  comm_isend(&req[0],&p->comm, &send_n,sizeof(uint), targ,tag);
+    comm_irecv(&req[2],p->comm, &count[1],sizeof(uint), p->comm->id-1,tag);
+  comm_isend(&req[0],p->comm, &send_n,sizeof(uint), targ,tag);
   comm_wait(req,recvn+1);
   
   sum = p->data.n + count[0] + count[1];
@@ -118,18 +110,18 @@ static void crystal_exchange(struct crystal *p, uint send_n, uint targ,
   recv[0] = (uint*)p->data.ptr + p->data.n, recv[1] = recv[0] + count[0];
   p->data.n = sum;
   
-  if(recvn)    comm_irecv(&req[1],&p->comm,
+  if(recvn)    comm_irecv(&req[1],p->comm,
                           recv[0],count[0]*sizeof(uint), targ        ,tag+1);
-  if(recvn==2) comm_irecv(&req[2],&p->comm,
-                          recv[1],count[1]*sizeof(uint), p->comm.id-1,tag+1);
-  comm_isend(&req[0],&p->comm, p->work.ptr,send_n*sizeof(uint), targ,tag+1);
+  if(recvn==2) comm_irecv(&req[2],p->comm,
+                          recv[1],count[1]*sizeof(uint), p->comm->id-1,tag+1);
+  comm_isend(&req[0],p->comm, p->work.ptr,send_n*sizeof(uint), targ,tag+1);
   comm_wait(req,recvn+1);
 }
 
 void crystal_router(struct crystal *cr)
 {
   uint bl=0, bh, nl;
-  uint id = cr->comm.id, n=cr->comm.np;
+  uint id = cr->comm->id, n=cr->comm->np;
   uint send_n, targ, tag = 0;
   int send_hi, recvn;
   while(n>1) {
@@ -237,23 +229,16 @@ static struct crystal **handle_array = 0;
 static int handle_max = 0;
 static int handle_n = 0;
 
-void fcrystal_setup(sint *handle, const comm_hdl *chp)
+void fcrystal_setup(sint *handle, const comm_ptr *cpp)
 {
   struct crystal *p;
-  comm_hdl h;
-  int id, np;
   
   if(handle_n==handle_max)
     handle_max+=handle_max/2+1,
     handle_array=trealloc(struct crystal*,handle_array,handle_max);
   handle_array[handle_n]=p=tmalloc(struct crystal,1);
 
-  comm_dup(*chp,&h);
-  comm_id(h,&id);
-  comm_np(h,&np);
-  p->comm.h = h;
-  p->comm.id = id;
-  p->comm.np = np;
+  comm_dup(&(p->comm),*cpp);
   
   buffer_init(&p->data,1000);
   buffer_init(&p->work,1000);

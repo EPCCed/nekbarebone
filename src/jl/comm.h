@@ -61,28 +61,31 @@
          
 */
 
+typedef struct comm * comm_ptr;
+
 #ifdef MPI
 #include <mpi.h>
 typedef MPI_Comm comm_hdl;
-typedef MPI_Request comm_req;
 typedef MPI_Datatype comm_type;
+typedef MPI_Op comm_op;
+typedef MPI_Request comm_req;
 #else
 typedef int comm_hdl;
-typedef int comm_req;
 typedef int comm_type;
-typedef int MPI_Fint;
+typedef int comm_op;
+typedef int comm_req;
 #endif
 
 
 #define comm_init      PREFIXED_NAME(comm_init     )
 #define comm_finalize  PREFIXED_NAME(comm_finalize )
 
-#define comm_dup       PREFIXED_NAME(comm_dup      )
 #define comm_world     PREFIXED_NAME(comm_world    )
+#define comm_dup       PREFIXED_NAME(comm_dup      )
 #define comm_free      PREFIXED_NAME(comm_free     )
 
-#define comm_id        PREFIXED_NAME(comm_id       )
 #define comm_np        PREFIXED_NAME(comm_np       )
+#define comm_id        PREFIXED_NAME(comm_id       )
 
 #define comm_type_int  PREFIXED_NAME(comm_type_int )
 #define comm_type_int8 PREFIXED_NAME(comm_type_int8)
@@ -108,49 +111,49 @@ extern uint comm_gbl_id, comm_gbl_np;
 
 
 struct comm {
-  uint id, np;
   comm_hdl h;
+  int np, id;
 };
 
 
 void comm_init(void);
 void comm_finalize(void);
 
-void comm_dup(const comm_hdl ch, comm_hdl *chp);
-void comm_world(comm_hdl *chp);
-void comm_free(comm_hdl ch);
+void comm_world(comm_ptr *cpp);
+void comm_dup(comm_ptr *cpp, const comm_ptr cp);
+void comm_free(comm_ptr *cpp);
 
-void comm_id(const comm_hdl ch, int *id);
-void comm_np(const comm_hdl ch, int *np);
+void comm_np(const comm_ptr cp, int *np);
+void comm_id(const comm_ptr cp, int *id);
 
 void comm_type_int(comm_type *ct);
 void comm_type_int8(comm_type *ct);
 void comm_type_real(comm_type *ct);
 void comm_type_dp(comm_type *ct);
-void comm_tag_ub(const comm_hdl ch, int *ub);
+void comm_tag_ub(const comm_ptr cp, int *ub);
 void comm_time(double *tm);
 
-void comm_barrier(const comm_hdl ch);
-void comm_bcast(const comm_hdl ch, void *p, size_t n, uint root);
+void comm_barrier(const comm_ptr cp);
+void comm_bcast(const comm_ptr cp, void *p, size_t n, uint root);
 
 
 #ifdef GS_DEFS_H
-void comm_allreduce_cdom(const comm_hdl ch, comm_type cdom, gs_op op,
+void comm_allreduce_cdom(const comm_ptr cp, comm_type cdom, gs_op op,
                          void *v, uint vn, void *buf);
 
-void comm_allreduce(const struct comm *c, gs_dom dom, gs_op op,
+void comm_allreduce(const comm_ptr cp, gs_dom dom, gs_op op,
                     void *v, uint vn, void *buf);
 
-void comm_scan(void *scan, const struct comm *com, gs_dom dom, gs_op op,
+void comm_scan(void *scan, const comm_ptr cp, gs_dom dom, gs_op op,
                const void *v, uint vn, void *buffer);
 
-double comm_dot(const struct comm *comm, double *v, double *w, uint n);
+double comm_dot(const comm_ptr cp, double *v, double *w, uint n);
 
 #define DEFINE_REDUCE(T) \
 T PREFIXED_NAME(comm_reduce__##T)( \
-    const struct comm *comm, gs_op op, const T *in, uint n); \
-static T comm_reduce_##T(const struct comm *c, gs_op op, const T *v, uint vn) \
-{ return PREFIXED_NAME(comm_reduce__##T)(c,op,v,vn); }
+    const comm_ptr cp, gs_op op, const T *in, uint n); \
+static T comm_reduce_##T(const comm_ptr cp, gs_op op, const T *v, uint vn) \
+{ return PREFIXED_NAME(comm_reduce__##T)(cp,op,v,vn); }
 GS_FOR_EACH_DOMAIN(DEFINE_REDUCE)
 #undef DEFINE_REDUCE
 
@@ -161,40 +164,40 @@ GS_FOR_EACH_DOMAIN(DEFINE_REDUCE)
 
 #endif
 
-static void comm_recv(const struct comm *c, void *p, size_t n,
+static void comm_recv(const comm_ptr cp, void *p, size_t n,
                       uint src, int tag)
 {
 #ifdef MPI
 # ifndef MPI_STATUS_IGNORE
   MPI_Status stat;
-  MPI_Recv(p,n,MPI_UNSIGNED_CHAR,src,tag,c->h,&stat);
+  MPI_Recv(p,n,MPI_UNSIGNED_CHAR,src,tag,cp->h,&stat);
 # else  
-  MPI_Recv(p,n,MPI_UNSIGNED_CHAR,src,tag,c->h,MPI_STATUS_IGNORE);
+  MPI_Recv(p,n,MPI_UNSIGNED_CHAR,src,tag,cp->h,MPI_STATUS_IGNORE);
 # endif
 #endif
 }
 
-static void comm_send(const struct comm *c, void *p, size_t n,
+static void comm_send(const comm_ptr cp, void *p, size_t n,
                       uint dst, int tag)
 {
 #ifdef MPI
-  MPI_Send(p,n,MPI_UNSIGNED_CHAR,dst,tag,c->h);
+  MPI_Send(p,n,MPI_UNSIGNED_CHAR,dst,tag,cp->h);
 #endif
 }
 
-static void comm_irecv(comm_req *req, const struct comm *c,
+static void comm_irecv(comm_req *req, const comm_ptr cp,
                        void *p, size_t n, uint src, int tag)
 {
 #ifdef MPI
-  MPI_Irecv(p,n,MPI_UNSIGNED_CHAR,src,tag,c->h,req);
+  MPI_Irecv(p,n,MPI_UNSIGNED_CHAR,src,tag,cp->h,req);
 #endif
 }
 
-static void comm_isend(comm_req *req, const struct comm *c,
+static void comm_isend(comm_req *req, const comm_ptr cp,
                        void *p, size_t n, uint dst, int tag)
 {
 #ifdef MPI
-  MPI_Isend(p,n,MPI_UNSIGNED_CHAR,dst,tag,c->h,req);
+  MPI_Isend(p,n,MPI_UNSIGNED_CHAR,dst,tag,cp->h,req);
 #endif
 }
 
