@@ -2,6 +2,8 @@
 #include <stdlib.h> /* for exit */
 #include <stdio.h> /* for exit */
 #include <string.h> /* memcpy */
+#include <time.h>
+#include <math.h>
 #include <limits.h> /* for gs identities */
 #include <float.h>  /* for gs identities */
 #include "name.h"
@@ -40,7 +42,7 @@ void comm_world(comm_ptr *cpp)
     MPI_Comm_size(cp->h,&(cp->np));
     MPI_Comm_rank(cp->h,&(cp->id));
 #else
-    cp->h = NULL;
+    cp->h = 0;
     cp->np = 0;
     cp->id = -1;
 #endif
@@ -282,11 +284,14 @@ void comm_allreduce_cdom(const comm_ptr cp, comm_type cdom, gs_op op,
 {
   gs_dom dom;
   int dom_ok = 1;
+  
   switch(cdom) {
+#ifdef MPI
     case MPI_INTEGER:          dom = gs_int; break;
     case MPI_INTEGER8:         dom = gs_long; break;
     case MPI_REAL:             dom = gs_float; break;
-    case MPI_DOUBLE_PRECISION: dom = gs_double; break;            
+    case MPI_DOUBLE_PRECISION: dom = gs_double; break;
+#endif
     default: dom_ok = 0;
   }
 

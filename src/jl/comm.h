@@ -113,6 +113,12 @@ extern uint comm_gbl_id, comm_gbl_np;
 struct comm {
   comm_hdl h;
   int np, id;
+#ifdef __UPC__
+  shared[] char *shared *buf_dir; /* Global directory of buffers */
+  shared int *flgs;
+  char *buf;			  /* Local part of buffers */
+  size_t buf_len;		  /* Shared buffer size */
+#endif
 };
 
 
