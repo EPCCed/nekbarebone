@@ -175,7 +175,7 @@ void comm_barrier(const comm_ptr cp)
 
 void comm_bcast(const comm_ptr cp, void *p, size_t n, uint root)
 {
-  if (NULL == cp) return;
+  if (NULL == cp || NULL == p) return;
 #ifdef MPI
   MPI_Bcast(p,n,MPI_BYTE,root,cp->h);
 #endif
@@ -282,6 +282,8 @@ void comm_scan(void *scan, const comm_ptr cp, gs_dom dom, gs_op op,
 void comm_allreduce_cdom(const comm_ptr cp, comm_type cdom, gs_op op,
                          void *v, uint vn, void *buf)
 {
+  if (NULL == cp || NULL == v || NULL == buf) return;
+  
   gs_dom dom;
   int dom_ok = 1;
   
