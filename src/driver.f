@@ -21,7 +21,7 @@ c-----------------------------------------------------------------------
      &                mx,my,mz)
 
       icount = 0
-            
+
       call comm_time(tstart)
       do nx1=nx0,nxN,nxD
         call init_dim
@@ -340,12 +340,14 @@ c----------------------------------------------------------------------
       call comm_bcast(comms_h,my,4,0)
       call comm_bcast(comms_h,mz,4,0)
 
+      if(comms_id.eq.0) write(6,*) "ifbrick: ",ifbrick
+      if(comms_id.eq.0) write(6,*) "iel(0,N,D): ",iel0,",",ielN,",",ielD
+      if(comms_id.eq.0) write(6,*) "nx(0,N,D): ",nx0,",",nxN,",",nxD
+      
       if(iel0.gt.ielN .or. nx0.gt.nxN) goto 200
       if(ielN.gt.lelt .or. nxN.gt.lx1) goto 210
       if(ielD.gt.ielN .or. nxD.gt.nxN) goto 220
       
-      if(comms_id.eq.0) write(6,*) "ifbrick: ",ifbrick
-
       return
 
   100 continue
