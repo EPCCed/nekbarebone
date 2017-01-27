@@ -6,7 +6,7 @@ Furthermore, the compilation scripts have been altered such that the jl source i
 which is then linked to the nekbarebone executable.
 
 By default the jl source is compiled to exags.a, however, the nekbarebone executable can instead be made
-to link an external exags libraries (such as one based on upc for example) by making suitable edits to the
+to link to external exags libraries (such as one based on upc for example) by making suitable edits to the
 ./src/makefile.template file: first, set the IFEXAGSMPI variable to false and then set EXAGSLIBNAME and EXAGSLIBPATH
 to the name and path of the external exags library. 
 
