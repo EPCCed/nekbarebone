@@ -83,7 +83,7 @@ nekbarebone: 	objdir $(NOBJS_Fbon) $(NOBJS_C0)
 ifeq ($(IFEXAGSMPI),true)
 	ar cru $(OBJDIR)/lib$(EXAGSLIBNAME).a $(NOBJS_C0)
 endif
-	$(F77) -o ${BINNAME} $G $(NOBJS_Fbon) -L$(EXAGSLIBPATH) -l$(EXAGSLIBNAME)
+	$(F77) -o ${BINNAME} $G $(NOBJS_Fbon) -L$(EXAGSLIBPATH) -l$(EXAGSLIBNAME) $(USR_LFLAGS)
 	@if test -f ${BINNAME}; then \
 	echo "#############################################################"; \
 	echo "#                  Compilation successful!                  #"; \
