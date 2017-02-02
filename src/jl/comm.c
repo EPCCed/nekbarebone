@@ -287,15 +287,23 @@ void comm_allreduce_cdom(const comm_ptr cp, comm_type cdom, gs_op op,
   gs_dom dom;
   int dom_ok = 1;
   
-  switch(cdom) {
 #ifdef MPI
-    case MPI_INTEGER:          dom = gs_int; break;
-    case MPI_INTEGER8:         dom = gs_long; break;
-    case MPI_REAL:             dom = gs_float; break;
-    case MPI_DOUBLE_PRECISION: dom = gs_double; break;
-#endif
-    default: dom_ok = 0;
+  if (cdom == MPI_INTEGER){
+    dom = gs_int;
+  }else if(cdom == MPI_INTEGER8){
+    dom = gs_long;
+  }else if(cdom == MPI_REAL){
+    dom = gs_float;
+  }else if(cdom == MPI_DOUBLE_PRECISION){
+    dom = gs_double;
+  }else{
+    dom_ok = 0;
   }
+#endif
+#ifndef MPI
+  dom_ok = 0;
+}
+#endif
 
   if (dom_ok == 1) {
     comm_allreduce(cp,dom,op,v,vn,buf);
